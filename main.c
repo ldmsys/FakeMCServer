@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -31,12 +32,12 @@ uint64_t htonll(uint64_t value)
     static const int num = 42;
 
     // Check the endianness
-    if (*reinterpret_cast<const char*>(&num) == num)
+    if (*(const char*)(&num) == num)
     {
-        const uint32_t high_part = htonl(static_cast<uint32_t>(value >> 32));
-        const uint32_t low_part = htonl(static_cast<uint32_t>(value & 0xFFFFFFFFLL));
+        const uint32_t high_part = htonl((uint32_t)(value >> 32));
+        const uint32_t low_part = htonl((uint32_t)(value & 0xFFFFFFFFLL));
 
-        return (static_cast<uint64_t>(low_part) << 32) | high_part;
+        return ((uint64_t)low_part << 32) | high_part;
     } else
     {
         return value;
@@ -91,7 +92,7 @@ size_t appendLengthvarint(char* string, size_t length, char* mcstring) {
 void handle_session(int datafd);
 
 int main(void) {
-    signal(SIGCHLD,SIG_IGN);
+//  signal(SIGCHLD,SIG_IGN);
     int sockfd, datafd;
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
@@ -111,7 +112,8 @@ int main(void) {
     }
 
     if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (char *)&yes, sizeof(yes)) < 0) {
-        perror("setsockopt(): SO_REUSEPORT"); return 1;
+        perror("setsockopt(): SO_REUSEPORT");
+        printf("but we expected this. ignoring: Are you on Windows?\n");
     }
 
     if(setsockopt(sockfd, SOL_TCP, TCP_NODELAY, (char *)&yes, sizeof(yes)) < 0) {
