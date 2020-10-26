@@ -9,6 +9,14 @@ require('minecraft-protocol').createServer({
     maxPlayers: 99999,
     playersCount: 99999
 }).on('login', client => {
+  client.write('login', {
+    entityId: client.id,
+    levelType: 'default',
+    gameMode: 0,
+    dimension: 0,
+    difficulty: 0,
+    reducedDebugInfo: true
+  });
     client.write('position', {
         x: 0,
         y: 1.62,
