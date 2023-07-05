@@ -88,13 +88,13 @@ size_t appendLengthvarint(char* string, size_t length, char* mcstring) {
     return headerlen+length;
 }
 
-int main(void) {
-    int sockfd, datafd, n, dn, expected_packet_size, mode, nocounter, keepalivecounter, yebiopt, outdated, logged_in;
-    socklen_t clilen;
-    unsigned char buf[MTU], returnbuf[MTU], yebibuf[MTU], tmpbuf[MTU];
-    struct sockaddr_in serv_addr, cli_addr;
-    struct iovec vec[10];
+void handle_session(int datafd);
 
+int main(void) {
+    signal(SIGCHLD,SIG_IGN);
+    int sockfd, datafd;
+    socklen_t clilen;
+    struct sockaddr_in serv_addr, cli_addr;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if(sockfd < 0) {
         perror("socket()"); return 1;
@@ -133,17 +133,40 @@ int main(void) {
     printf("Server is listening on port %d\n", PORT);
 
     while(1) {
-        n = expected_packet_size = mode = nocounter = keepalivecounter = yebiopt = outdated = logged_in = 0;
-        memset(&buf, 0, MTU);
         datafd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
         if(datafd < 0) {
             perror("accept()"); close(sockfd); return 1;
         }
+        int pid = fork();
+        if(pid == -1) {
+            perror("fork()"); close(sockfd); return 1;
+        } else if(pid == 0) {
+            // Child process
+            handle_session(datafd);
+            PRINTF_DEBUG("Handle done!\n");
+            exit(0);
+        } else {
+            // Parent process
+
+        }
+    }
+    close(sockfd);
+    return 0;
+}
+
+void handle_session(int datafd) {
+        int n, dn, expected_packet_size, mode, nocounter, keepalivecounter, yebiopt, outdated, logged_in;
+        n = expected_packet_size = mode = nocounter = keepalivecounter = yebiopt = outdated = logged_in = 0;
+        socklen_t clilen;
+        unsigned char buf[MTU], returnbuf[MTU], yebibuf[MTU], tmpbuf[MTU];
+        struct sockaddr_in serv_addr, cli_addr;
+        struct iovec vec[10];
+
         struct timeval tv_timeo = { 2, 100000 };
         if(setsockopt(datafd, SOL_SOCKET, SO_RCVTIMEO, &tv_timeo, sizeof(tv_timeo)) < 0) {
-            perror("setsockopt(): SO_RCVTIMEO"); return 1;
-            return 1;
+            perror("setsockopt(): SO_RCVTIMEO"); return;
         }
+        memset(&buf, 0, MTU);
         PRINTF_DEBUG("One connected!\n");
 
         while(1) {
@@ -156,7 +179,7 @@ int main(void) {
             } else {
                 PRINTF_DEBUG("Reading... %d, %d\n", mode, nocounter);
                 if(nocounter >= 5) {
-                    shutdown(datafd, SHUT_RDWR); /*close(datafd);*/ break;
+                    shutdown(datafd, SHUT_RDWR); /*close(datafd);*/ return;
                 } else if(keepalivecounter >= 5 && logged_in) {
                         keepalivecounter = 0;
 
@@ -412,9 +435,6 @@ int main(void) {
                 n = expected_packet_size = 0;
                 memset(&buf, 0, MTU);
 
-            
         }
-    }
-    close(sockfd);
-    return 0;
+    close(datafd);
 }
