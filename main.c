@@ -95,34 +95,38 @@ int main(void) {
 //  signal(SIGCHLD,SIG_IGN);
     int sockfd, datafd;
     socklen_t clilen;
-    struct sockaddr_in serv_addr, cli_addr;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd < 0) {
-        perror("socket()"); return 1;
+    struct sockaddr_in6 serv_addr, cli_addr;
+
+    sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket()");
+        return 1;
     }
 
     memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin6_family = AF_INET6;
+    serv_addr.sin6_addr = in6addr_any; // Any incoming interface
+    serv_addr.sin6_port = htons(PORT);
 
     unsigned int yes = 1;
-    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&yes, sizeof(yes)) < 0) {
-        perror("setsockopt(): SO_REUSEADDR"); return 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
+        perror("setsockopt(): SO_REUSEADDR");
+        return 1;
     }
 
-    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (char *)&yes, sizeof(yes)) < 0) {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) < 0) {
         perror("setsockopt(): SO_REUSEPORT");
         printf("but we expected this. ignoring: Are you on Windows?\n");
     }
 
-    if(setsockopt(sockfd, SOL_TCP, TCP_NODELAY, (char *)&yes, sizeof(yes)) < 0) {
-        perror("setsockopt(): TCP_NODELAY"); return 1;
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) < 0) {
+        perror("setsockopt(): TCP_NODELAY");
+        return 1;
     }
 
-
-    if(bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        perror("bind()"); return 1;
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("bind()");
+        return 1;
     }
 
     listen(sockfd, 5);
